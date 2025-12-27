@@ -1,10 +1,12 @@
 # Copyright (c) 2023 Qualcomm Technologies, Inc.
 # All Rights Reserved.
+#
+# Modifications Copyright (c) 2025 Jerônimo Augusto Soares
 
 import torch.nn.functional as F
 from torch import nn
 
-from subspectralnorm import SubSpectralNorm
+from .subspectralnorm import SubSpectralNorm
 
 
 class ConvBNReLU(nn.Module):
@@ -67,7 +69,7 @@ class ConvBNReLU(nn.Module):
 class BCResBlock(nn.Module):
     def __init__(self, in_plane, out_plane, idx, stride):
         super().__init__()
-        self.transition_block = in_plane != out_plane
+        self.transition_block = in_plane != out_plane or stride[0] != 1
         kernel_size = (3, 3)
 
         # 2D part (f2)
