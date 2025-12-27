@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Jerônimo Augusto Soares
+# Licensed under the BSD 3-Clause License. See LICENSE file in the project root for full license information.
+
 import os
 import time
 import random
@@ -14,11 +17,13 @@ __all__ = [
     "download_gsc_dataset",
     "create_gsc_dataframes",
     "SpeechCommandsDataset",
-    "PreprocessingDataLoader"
+    "PreprocessingDataLoader",
 ]
 
 
-def download_gsc_dataset(destination_dir, version=2, keep_archive=False, force_download=False):
+def download_gsc_dataset(
+    destination_dir, version=2, keep_archive=False, force_download=False
+):
     """
     Downloads and extracts the Google Speech Commands dataset (v1 or v2).
     Uses a marker file to ensure extraction completion and avoid redundant downloads.
@@ -26,26 +31,26 @@ def download_gsc_dataset(destination_dir, version=2, keep_archive=False, force_d
     Args:
         destination_dir (str): Root path where the dataset folder will be created.
         version (int): Dataset version (1 or 2). Default is 2.
-        keep_archive (bool): If True, keeps the .tar.gz file after extraction. 
+        keep_archive (bool): If True, keeps the .tar.gz file after extraction.
                              If False, removes it. Default is False.
-        force_download (bool): If True, ignores existing files/markers and forces 
+        force_download (bool): If True, ignores existing files/markers and forces
                                a fresh download and extraction. Default is False.
 
     Returns:
         str: The path to the extracted dataset directory.
     """
-    
+
     if version == 1:
         url = "https://download.tensorflow.org/data/speech_commands_v0.01.tar.gz"
     elif version == 2:
         url = "https://download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
     else:
         raise ValueError("Version must be 1 or 2.")
-    
+
     filename = url.split("/")[-1]
-    
+
     # Adjust destination to include the specific version subfolder
-    extract_path = os.path.join(destination_dir, filename.split(".tar.gz")[0]) 
+    extract_path = os.path.join(destination_dir, filename.split(".tar.gz")[0])
 
     # Sentinel file to mark successful extraction
     marker_file = os.path.join(extract_path, ".dataset_ready")
@@ -68,17 +73,17 @@ def download_gsc_dataset(destination_dir, version=2, keep_archive=False, force_d
     # Download if file is missing or forced
     if force_download or not os.path.exists(tar_path):
         print(f"Downloading Speech Commands v{version} to {destination_dir}...")
-        
+
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get("content-length", 0))
             block_size = 1024 * 1024  # 1MB
 
             with open(tar_path, "wb") as file, tqdm(
                 desc=filename,
                 total=total_size,
-                unit='iB',
+                unit="iB",
                 unit_scale=True,
                 unit_divisor=1024,
             ) as bar:
@@ -97,19 +102,21 @@ def download_gsc_dataset(destination_dir, version=2, keep_archive=False, force_d
     print(f"Extracting files to {extract_path}...")
     try:
         os.makedirs(extract_path, exist_ok=True)
-        
+
         with tarfile.open(tar_path, "r:gz") as tar:
             # Security fix for Python 3.12+ regarding 'data' filter deprecation
-            if hasattr(tarfile, 'data_filter'):
-                tar.extractall(path=extract_path, filter='data')
+            if hasattr(tarfile, "data_filter"):
+                tar.extractall(path=extract_path, filter="data")
             else:
                 tar.extractall(path=extract_path)
-                
+
     except tarfile.ReadError:
         print("Error: The archive is corrupted. Deleting it.")
         if os.path.exists(tar_path):
             os.remove(tar_path)
-        raise RuntimeError("Dataset archive was corrupted. Please rerun with force_download=True.")
+        raise RuntimeError(
+            "Dataset archive was corrupted. Please rerun with force_download=True."
+        )
     except Exception as e:
         print(f"Extraction failed: {e}")
         raise e
@@ -141,7 +148,7 @@ def create_gsc_dataframes(root_dir):
     Returns:
         tuple: (train_df, valid_df, test_df, noise_df)
     """
-    
+
     # Load official split lists provided with the dataset.
     val_list_path = os.path.join(root_dir, "validation_list.txt")
     test_list_path = os.path.join(root_dir, "testing_list.txt")
@@ -149,25 +156,25 @@ def create_gsc_dataframes(root_dir):
     valid_files = set()
     if os.path.exists(val_list_path):
         with open(val_list_path, "r") as f:
-            valid_files = set(x.strip().replace('\\', '/') for x in f.readlines())
+            valid_files = set(x.strip().replace("\\", "/") for x in f.readlines())
 
     test_files = set()
     if os.path.exists(test_list_path):
         with open(test_list_path, "r") as f:
-            test_files = set(x.strip().replace('\\', '/') for x in f.readlines())
+            test_files = set(x.strip().replace("\\", "/") for x in f.readlines())
 
     data_train = []
     data_valid = []
     data_test = []
     data_noise = []
-    
+
     file_id_counter = 0
 
     print(f"Scanning dataset at: {root_dir} ...")
 
     for folder_name in sorted(os.listdir(root_dir)):
         folder_path = os.path.join(root_dir, folder_name)
-        
+
         if not os.path.isdir(folder_path):
             continue
 
@@ -176,11 +183,13 @@ def create_gsc_dataframes(root_dir):
             for filename in os.listdir(folder_path):
                 if filename.endswith(".wav"):
                     # file_id < 0 indicates noise in the Dataset class
-                    data_noise.append({
-                        "file_name": filename,
-                        "label": "_background_noise_",
-                        "file_id": -1
-                    })
+                    data_noise.append(
+                        {
+                            "file_name": filename,
+                            "label": "_background_noise_",
+                            "file_id": -1,
+                        }
+                    )
             continue
 
         # Standard case: Command words (up, down, sheila, left, etc.)
@@ -190,11 +199,11 @@ def create_gsc_dataframes(root_dir):
 
             # Relative path used in official lists (e.g., "bed/00176480_nohash_0.wav")
             relative_path = f"{folder_name}/{filename}"
-            
+
             entry = {
                 "file_name": relative_path,
                 "label": folder_name,
-                "file_id": file_id_counter
+                "file_id": file_id_counter,
             }
             file_id_counter += 1
 
@@ -215,7 +224,6 @@ def create_gsc_dataframes(root_dir):
     return train_df, valid_df, test_df, noise_df
 
 
-
 class SpeechCommandsDataset(Dataset):
     def __init__(
         self,
@@ -223,25 +231,25 @@ class SpeechCommandsDataset(Dataset):
         target_labels,
         audio_dir,
         noise_dir=None,
-        mode='train',
+        mode="train",
         cache_ram=True,
         sr=16000,
         audio_len_samples=16000,
         limit_unknown=None,
         limit_silence=None,
-        random_state=None
+        random_state=None,
     ):
         """
-        Custom Dataset for Google Speech Commands with support for specific target 
+        Custom Dataset for Google Speech Commands with support for specific target
         classes, "Unknown" class balancing, and dynamic "Silence" generation.
 
         Args:
-            metadata_df (pd.DataFrame or str): DataFrame or path to CSV containing columns 
-                                               ['file_name', 'label', 'file_id']. 
+            metadata_df (pd.DataFrame or str): DataFrame or path to CSV containing columns
+                                               ['file_name', 'label', 'file_id'].
                                                file_id < 0 indicates background noise.
             target_labels (list): List of specific target classes (e.g., ['up', 'down']).
             audio_dir (str): Root directory containing the audio files.
-            noise_dir (str): Directory containing background noise files. 
+            noise_dir (str): Directory containing background noise files.
                              Defaults to audio_dir/_background_noise_ if None.
             mode (str): Sampling mode ('train', 'valid', 'test').
             cache_ram (bool): If True, loads all speech samples into RAM.
@@ -252,95 +260,109 @@ class SpeechCommandsDataset(Dataset):
             random_state (int): Seed for reproducibility of file selection/splitting.
         """
         self.audio_dir = audio_dir
-        self.noise_dir = noise_dir if noise_dir else os.path.join(audio_dir, "_background_noise_")
+        self.noise_dir = (
+            noise_dir if noise_dir else os.path.join(audio_dir, "_background_noise_")
+        )
         self.mode = mode
         self.cache_ram = cache_ram
         self.sr = sr
         self.audio_len = audio_len_samples
         self.random_state = random_state
-        
+
         # Local RNG to ensure reproducible splits without affecting global training augmentation
         if random_state is None:
             random_state = int(time.time())
-        
+
         self.rng = random.Random(random_state)
 
         # --- Label Configuration ---
         self.target_labels = sorted(target_labels)
         self.label_to_idx = {label: i + 2 for i, label in enumerate(self.target_labels)}
-        
+
         # Reserved indices: 0 for Silence, 1 for Unknown (Standard GSC/BCResNet convention)
-        self.label_to_idx['_silence_'] = 0
-        self.label_to_idx['_unknown_'] = 1
-        
+        self.label_to_idx["_silence_"] = 0
+        self.label_to_idx["_unknown_"] = 1
+
         self.idx_to_label = {v: k for k, v in self.label_to_idx.items()}
 
         # --- Metadata Processing ---
-        df = metadata_df if isinstance(metadata_df, pd.DataFrame) else pd.read_csv(metadata_df)
-        
+        df = (
+            metadata_df
+            if isinstance(metadata_df, pd.DataFrame)
+            else pd.read_csv(metadata_df)
+        )
+
         # Separate words and noise based on file_id convention (file_id < 0 is noise)
-        if 'file_id' in df.columns:
-            df_noise = df[df['file_id'] < 0].copy()
-            df_words = df[df['file_id'] >= 0].copy()
+        if "file_id" in df.columns:
+            df_noise = df[df["file_id"] < 0].copy()
+            df_words = df[df["file_id"] >= 0].copy()
         else:
             # Fallback: try to infer noise if file_id column is missing
-            df_noise = pd.DataFrame() 
+            df_noise = pd.DataFrame()
             df_words = df.copy()
 
         # Filter Targets and Unknowns
-        df_targets = df_words[df_words['label'].isin(self.target_labels)]
-        df_unknowns = df_words[~df_words['label'].isin(self.target_labels)]
+        df_targets = df_words[df_words["label"].isin(self.target_labels)]
+        df_unknowns = df_words[~df_words["label"].isin(self.target_labels)]
 
-        self.samples = [] 
+        self.samples = []
 
         # --- Sample List Construction (Balancing) ---
-        
+
         # A) Targets (Add all)
         for _, row in df_targets.iterrows():
-            self.samples.append((row['file_name'], self.label_to_idx[row['label']]))
+            self.samples.append((row["file_name"], self.label_to_idx[row["label"]]))
 
         # B) Unknowns (Sampling)
         if limit_unknown is not None:
             n_unknown = limit_unknown
         else:
             # Default: Match average size of target classes or roughly 10% of total
-            n_unknown = len(df_targets) // len(self.target_labels) if len(self.target_labels) > 0 else 0
-        
-        unknown_files = df_unknowns['file_name'].tolist()
+            n_unknown = (
+                len(df_targets) // len(self.target_labels)
+                if len(self.target_labels) > 0
+                else 0
+            )
+
+        unknown_files = df_unknowns["file_name"].tolist()
         if len(unknown_files) > n_unknown:
             selected_unknowns = self.rng.sample(unknown_files, n_unknown)
         else:
             selected_unknowns = unknown_files
-            
+
         for fname in selected_unknowns:
-            self.samples.append((fname, self.label_to_idx['_unknown_']))
+            self.samples.append((fname, self.label_to_idx["_unknown_"]))
 
         # C) Silence (Quantity Definition)
         # Silence is not added to self.samples list; it is generated dynamically in __getitem__
         if limit_silence is not None:
             self.num_silence = limit_silence
         else:
-            self.num_silence = n_unknown # Keep balanced with Unknowns
+            self.num_silence = n_unknown  # Keep balanced with Unknowns
 
         # --- RAM Caching ---
         self.cached_speech = None
         self.cached_noise = []
 
         if self.cache_ram:
-            print(f"[{mode.upper()}] Loading {len(self.samples)} speech samples into RAM...")
+            print(
+                f"[{mode.upper()}] Loading {len(self.samples)} speech samples into RAM..."
+            )
             self.cached_speech = []
-            
+
             for fname, label_idx in tqdm(self.samples, desc="Load Speech"):
                 file_path = os.path.join(self.audio_dir, fname)
                 waveform = self._load_and_fix_waveform(file_path, fixed_length=True)
                 self.cached_speech.append((waveform, label_idx))
-            
+
             print(f"[{mode.upper()}] Loading background noise...")
             # Load noise from folder if not present in DataFrame
             if df_noise.empty and os.path.isdir(self.noise_dir):
-                noise_files = [f for f in os.listdir(self.noise_dir) if f.endswith('.wav')]
+                noise_files = [
+                    f for f in os.listdir(self.noise_dir) if f.endswith(".wav")
+                ]
             else:
-                noise_files = df_noise['file_name'].tolist()
+                noise_files = df_noise["file_name"].tolist()
 
             for nf in noise_files:
                 n_path = os.path.join(self.noise_dir, nf)
@@ -348,7 +370,7 @@ class SpeechCommandsDataset(Dataset):
                     # IMPORTANT: Load FULL noise (fixed_length=False) to allow random cropping later
                     waveform = self._load_and_fix_waveform(n_path, fixed_length=False)
                     self.cached_noise.append(waveform)
-            
+
             if not self.cached_noise:
                 print("WARNING: No noise files found. Using digital silence (zeros).")
                 self.cached_noise.append(torch.zeros(1, self.audio_len))
@@ -359,7 +381,7 @@ class SpeechCommandsDataset(Dataset):
         Noise files are kept in original length for random cropping.
         """
         waveform, sample_rate = torchaudio.load(file_path)
-        
+
         if sample_rate != self.sr:
             resampler = torchaudio.transforms.Resample(sample_rate, self.sr)
             waveform = resampler(waveform)
@@ -376,8 +398,8 @@ class SpeechCommandsDataset(Dataset):
             elif waveform.shape[1] > self.audio_len:
                 # Center/Start crop for standardization during caching
                 # (In real training, random crop is handled by augmentation, here we ensure consistent size)
-                waveform = waveform[:, :self.audio_len]
-                
+                waveform = waveform[:, : self.audio_len]
+
         return waveform
 
     def __len__(self):
@@ -386,7 +408,7 @@ class SpeechCommandsDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        Retrieves a sample. If index is out of bounds of speech samples, 
+        Retrieves a sample. If index is out of bounds of speech samples,
         generates a Silence sample dynamically.
         """
         # A) Speech Samples (Targets and Unknown)
@@ -404,13 +426,13 @@ class SpeechCommandsDataset(Dataset):
 
         # B) Silence Sample (Dynamically Generated)
         else:
-            label = self.label_to_idx['_silence_']
-            
+            label = self.label_to_idx["_silence_"]
+
             if self.cache_ram and self.cached_noise:
                 noise = random.choice(self.cached_noise)
             else:
                 # Fallback / On-the-fly logic placeholder
-                noise = torch.zeros(1, self.audio_len) 
+                noise = torch.zeros(1, self.audio_len)
 
             # Random Crop of 1 second from long noise file
             if noise.shape[1] > self.audio_len:
@@ -439,6 +461,7 @@ class PreprocessingDataLoader:
     Wraps a standard DataLoader to apply preprocessing on the target device (GPU/CPU)
     transparently during the training loop.
     """
+
     def __init__(self, loader, preprocessor, is_train=True):
         """
         Args:
@@ -450,7 +473,7 @@ class PreprocessingDataLoader:
         self.dataset = loader.dataset
         self.preprocessor = preprocessor
         self.is_train = is_train
-        
+
     def __len__(self):
         return len(self.loader)
 
@@ -459,14 +482,14 @@ class PreprocessingDataLoader:
             # Ensure tensors are on the same device as the preprocessor (e.g., GPU)
             inputs = inputs.to(self.preprocessor.device)
             labels = labels.to(self.preprocessor.device)
-            
+
             # Apply transformation (Augmentation + LogMel)
             # The preprocessor handles noise logic internally based on the is_train flag
             processed_inputs = self.preprocessor(
-                inputs, 
-                labels, 
+                inputs,
+                labels,
                 augment=self.is_train,  # Enable augmentation only for training
-                is_train=self.is_train
+                is_train=self.is_train,
             )
-            
+
             yield processed_inputs, labels

@@ -50,7 +50,16 @@ class ConvBNReLU(nn.Module):
         # convbnrelu block
         layers = []
         layers.append(
-            nn.Conv2d(in_plane, out_plane, kernel_size, stride, padding, rate, groups, bias=False)
+            nn.Conv2d(
+                in_plane,
+                out_plane,
+                kernel_size,
+                stride,
+                padding,
+                rate,
+                groups,
+                bias=False,
+            )
         )
         if ssn:
             layers.append(SubSpectralNorm(out_plane, 5))
@@ -160,12 +169,19 @@ class BCResNets(nn.Module):
         self.BCBlocks = nn.ModuleList([])
         for idx, n in enumerate(self.n):
             use_stride = idx in self.s
-            self.BCBlocks.append(BCBlockStage(n, self.c[idx], self.c[idx + 1], idx, use_stride))
+            self.BCBlocks.append(
+                BCBlockStage(n, self.c[idx], self.c[idx + 1], idx, use_stride)
+            )
 
         # Classifier
         self.classifier = nn.Sequential(
             nn.Conv2d(
-                self.c[-2], self.c[-2], (5, 5), bias=False, groups=self.c[-2], padding=(0, 2)
+                self.c[-2],
+                self.c[-2],
+                (5, 5),
+                bias=False,
+                groups=self.c[-2],
+                padding=(0, 2),
             ),
             nn.Conv2d(self.c[-2], self.c[-1], 1, bias=False),
             nn.BatchNorm2d(self.c[-1]),

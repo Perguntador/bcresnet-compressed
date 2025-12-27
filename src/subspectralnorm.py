@@ -22,7 +22,9 @@ class SubSpectralNorm(nn.Module):
         if batch:
             self.ssnorm = nn.BatchNorm2d(num_features * spec_groups, affine=affine_norm)
         else:
-            self.ssnorm = nn.InstanceNorm2d(num_features * spec_groups, affine=affine_norm)
+            self.ssnorm = nn.InstanceNorm2d(
+                num_features * spec_groups, affine=affine_norm
+            )
         self.sub_dim = dim
 
     def forward(self, x):  # when dim h is frequency dimension
