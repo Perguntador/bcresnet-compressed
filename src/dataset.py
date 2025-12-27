@@ -41,9 +41,9 @@ def download_gsc_dataset(
     """
 
     if version == 1:
-        url = "https://download.tensorflow.org/data/speech_commands_v0.01.tar.gz"
+        url = "https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.01.tar.gz"
     elif version == 2:
-        url = "https://download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
+        url = "https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
     else:
         raise ValueError("Version must be 1 or 2.")
 
