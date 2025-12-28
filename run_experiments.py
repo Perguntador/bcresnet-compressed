@@ -6,6 +6,7 @@ import time
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import argparse
 
 from src.utils import set_seed, initialize_weights, generate_test_report
 from src.dataset import (
@@ -19,7 +20,7 @@ from src.bcresnet import BCResNets
 from src.trainer import EarlyStopping, BCResNetScheduler, train_model
 
 # --- Global Configurations ---
-SEED = 42
+DEFAULT_SEED = 42
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --- Directories ---
@@ -62,7 +63,7 @@ VOCAB_CONFIGS = {
 # fmt: on
 
 
-def main():
+def main(seed):
     print(f"Using device: {DEVICE}")
 
     # Prepare Data
@@ -85,10 +86,10 @@ def main():
 
     # Iteration Loop (N -> TAU -> HOP_LENGTH)
     for N in N_SET:
-        print(f"\n=== Starting experiments for N={N} classes ===")
+        print(f"\n=== Starting experiments for N={N} words ===")
 
         # Reset seed for dataset reproducibility
-        set_seed(SEED)
+        set_seed(seed)
         target_classes = VOCAB_CONFIGS[N]
 
         # Initialize Datasets (re-initialized per N because target_labels change)
@@ -100,7 +101,7 @@ def main():
             cache_ram=True,
             limit_unknown=limits_map["train"],
             limit_silence=limits_map["train"],
-            random_state=SEED,
+            random_state=seed,
         )
         valid_ds = SpeechCommandsDataset(
             df_valid,
@@ -110,7 +111,7 @@ def main():
             cache_ram=True,
             limit_unknown=limits_map["valid"],
             limit_silence=limits_map["valid"],
-            random_state=SEED,
+            random_state=seed,
         )
         test_ds = SpeechCommandsDataset(
             df_test,
@@ -120,7 +121,7 @@ def main():
             cache_ram=True,
             limit_unknown=limits_map["test"],
             limit_silence=limits_map["test"],
-            random_state=SEED,
+            random_state=seed,
         )
 
         # Loaders
@@ -146,14 +147,14 @@ def main():
 
             for HOP_LENGTH in HOP_LENGTH_SET:
                 # Reset seed for training stability across configurations
-                set_seed(SEED)
+                set_seed(seed)
 
                 # Ensure dataset internal RNG is reset if needed
-                train_ds.set_random_state(SEED)
-                valid_ds.set_random_state(SEED)
-                test_ds.set_random_state(SEED)
+                train_ds.set_random_state(seed)
+                valid_ds.set_random_state(seed)
+                test_ds.set_random_state(seed)
 
-                config_name = f"v{VER}_N{N}_tau{TAU}_hl{HOP_LENGTH}_seed{SEED}"
+                config_name = f"v{VER}_N{N}_tau{TAU}_hl{HOP_LENGTH}_seed{seed}"
                 print(f"\n--- Running Config: {config_name} ---")
 
                 # Preprocessors
@@ -260,4 +261,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help="Seed for reproducibility (default: 42)",
+    )
+
+    args = parser.parse_args()
+
+    main(args.seed)
