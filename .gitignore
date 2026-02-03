@@ -1,3 +1,5 @@
 __pycache__/
-data/*
-models/*
+data/
+models/
+
+*.pkl
