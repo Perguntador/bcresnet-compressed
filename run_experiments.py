@@ -42,7 +42,7 @@ TOTAL_EPOCH = 200
 WARMUP_EPOCH = 5
 INIT_LR = 1e-1
 LR_LOWER_LIMIT = 0
-PATIENCE = 20
+PATIENCE = 200
 
 # --- Dataset Constants (from original paper) ---
 # Indices: 0=Train, 1=Valid, 2=Test
